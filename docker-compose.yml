@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Database services
+  catalogdb:
+    container_name: catalogdb
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: catalogdb
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_catalog:/var/lib/postgresql/data
+
+  # Example microservice (replace with your actual service names)
+  catalog-api:
+    container_name: catalog-api
+    build:
+      context: .
+      dockerfile: Services/Catalog/Catalog.API/Dockerfile
+    ports:
+      - "8001:80"
+    depends_on:
+      - catalogdb
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Database=Server=catalogdb;Port=5432;Database=catalogdb;User Id=postgres;Password=postgres;
+
+  # Add more services as needed
+  # basket-api:
+  #   container_name: basket-api
+  #   build:
+  #     context: .
+  #     dockerfile: Services/Basket/Basket.API/Dockerfile
+  #   ports:
+  #     - "8002:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+
+volumes:
+  postgres_catalog:
