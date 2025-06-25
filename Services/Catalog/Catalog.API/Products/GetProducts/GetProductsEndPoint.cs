@@ -7,9 +7,13 @@ namespace Catalog.API.Products.GetProducts
     {
         public void AddRoutes(IEndpointRouteBuilder app)
         {
-            app.MapGet("/products", async ([AsParameters] GetProductRequest request,ISender sender) =>
+            app.MapGet("/products", async (HttpContext context,ISender sender) =>
             {
-                var query=request.Adapt<GetProductsQuery>();
+                int pagedNumber=context.Request.Query.ContainsKey("pageNumber") ? int.Parse(context.Request.Query["pageNumber"]!) : 1;
+
+                int pagedSize=context.Request.Query.ContainsKey("pageSize") ? int.Parse(context.Request.Query["pageSize"]!) : 10;
+
+                var query=new GetProductsQuery(pagedNumber, pagedSize); 
                 var result =await sender.Send(query);
                 var response = result.Adapt<GetProductResponse>();
 

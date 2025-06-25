@@ -1,4 +1,6 @@
-﻿
+﻿using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
 namespace Catalog.API
 {
     public class Program
@@ -7,7 +9,6 @@ namespace Catalog.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
             var assembly = typeof(Program).Assembly;
 
             builder.Services.AddCarter();
@@ -15,10 +16,8 @@ namespace Catalog.API
             builder.Services.AddMediatR(config =>
             {
                 config.RegisterServicesFromAssembly(assembly);
-                //Before Handle() MeditR trigger ValidationBehavior
                 config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
                 config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-
             });
 
             builder.Services.AddValidatorsFromAssembly(assembly);
@@ -27,18 +26,35 @@ namespace Catalog.API
             {
                 options.Connection(builder.Configuration.GetConnectionString("Database")!);
             }).UseLightweightSessions();
+
             if (builder.Environment.IsDevelopment())
             {
                 builder.Services.InitializeMartenWith<CatalogInitialData>();
             }
 
             builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+            builder.Services.AddHealthChecks().AddNpgSql(builder.Configuration.GetConnectionString("Database")!);
+
+            // ✅ Configure Kestrel ports
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ListenAnyIP(8080); // HTTP
+                options.ListenAnyIP(8081, listenOptions =>
+                {
+                    listenOptions.UseHttps(); // HTTPS
+                });
+            });
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             app.MapCarter();
-            app.UseExceptionHandler(options => { });  
+            app.UseExceptionHandler(options => { });
+
+            app.UseHealthChecks("/health", new HealthCheckOptions
+            {
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
+
             app.Run();
         }
     }
