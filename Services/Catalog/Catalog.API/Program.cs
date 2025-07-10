@@ -7,7 +7,7 @@ namespace Catalog.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            #region Add Services to DI Container
             var assembly = typeof(Program).Assembly;
 
             builder.Services.AddCarter();
@@ -20,9 +20,7 @@ namespace Catalog.API
                 config.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
             });
-
             builder.Services.AddValidatorsFromAssembly(assembly);
-
             builder.Services.AddMarten(options =>
             {
                 options.Connection(builder.Configuration.GetConnectionString("Database")!);
@@ -31,15 +29,16 @@ namespace Catalog.API
             {
                 builder.Services.InitializeMartenWith<CatalogInitialData>();
             }
-
-            builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+            builder.Services.AddExceptionHandler<CustomExceptionHandler>(); 
+            #endregion
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            #region Configure HTTP requests Pipeline
             app.MapCarter();
-            app.UseExceptionHandler(options => { });  
-            app.Run();
+            app.UseExceptionHandler(options => { });
+            app.Run(); 
+            #endregion
         }
     }
 }
