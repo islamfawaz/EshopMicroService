@@ -1,5 +1,6 @@
-using DicountGrpc.Data;
+﻿using DicountGrpc.Data;
 using DicountGrpc.Services;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 
 namespace DicountGrpc
@@ -29,13 +30,48 @@ namespace DicountGrpc
             //});
 
             // Configure Kestrel for Docker gRPC
-            builder.WebHost.ConfigureKestrel(serverOptions =>
+
+            //// Configure Kestrel for both HTTP and HTTPS
+            //builder.WebHost.ConfigureKestrel(serverOptions =>
+            //{
+            //    // HTTP endpoint
+            //    serverOptions.ListenAnyIP(8080, listenOptions =>
+            //    {
+            //        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+            //    });
+
+            //    // HTTPS endpoint
+            //    serverOptions.ListenAnyIP(8081, listenOptions =>
+            //    {
+            //        listenOptions.UseHttps();
+            //        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+            //    });
+            //});
+
+
+            //builder.WebHost.ConfigureKestrel(options =>
+            // {
+            //     options.ListenLocalhost(5052, listenOptions =>
+            //     {
+            //         listenOptions.UseHttps(); // ✅ HTTPS
+            //         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2; // ✅ gRPC requires HTTP/2
+            //     });
+            // });
+
+            builder.WebHost.ConfigureKestrel(options =>
             {
-                serverOptions.ListenAnyIP(8081, listenOptions =>
+                options.ListenAnyIP(8080, listenOptions =>
                 {
-                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
+                    listenOptions.Protocols = HttpProtocols.Http2;
+                });
+
+                options.ListenAnyIP(8081, listenOptions =>
+                {
+                    listenOptions.UseHttps("/https/aspnetapp.pfx", "password"); // مطابقة تمامًا لكلمة المرور اللي استخدمتها
+                    listenOptions.Protocols = HttpProtocols.Http2;
                 });
             });
+
 
 
             var app = builder.Build();

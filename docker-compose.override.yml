@@ -30,7 +30,7 @@ services:
   distributedcache:
     image: redis
     container_name: distributedcache
-    restart: always  # Fixed: removed extra colon
+    restart: always  
     ports:
       - "6379:6379"
       
@@ -48,6 +48,27 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__Database=Server=catalogdb;Port=5432;Database=catalogdb;User Id=postgres;Password=postgres;
       
+  dicountgrpc:
+    image: ${DOCKER_REGISTRY-}dicountgrpc
+    container_name: dicountgrpc
+    build:
+      context: .
+      dockerfile: Services/Discount/DicountGrpc/Dockerfile  # Updated path
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ConnectionStrings__DataBase=Data Source=discountdb
+    ports:
+      - "6002:8080"  # HTTP
+      - "6062:8081"  # HTTPS
+    volumes:
+      - C:/Users/DELL/AppData/Roaming/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - C:/Users/DELL/AppData/Roaming/ASP.NET/Https:/https:ro
+
+      
   basket.api:
     image: ${DOCKER_REGISTRY-}basketapi
     container_name: basket-api
@@ -60,33 +81,18 @@ services:
       - ASPNETCORE_HTTPS_PORTS=8081
       - ConnectionStrings__Database=Server=basketdb;Port=5432;Database=basketdb;User Id=postgres;Password=postgres;
       - ConnectionStrings__Redis=distributedcache:6379
+      - GrpcSettings__Discount__Url=https://dicountgrpc:8081
     ports:
       - "6001:8080"  # HTTP
       - "6061:8081"  # HTTPS
     depends_on:
       - basketdb
       - distributedcache
+      - dicountgrpc
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
-      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
 
-  dicountgrpc:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-      - ASPNETCORE_HTTPS_PORTS=8081
-      - ConnectionStrings_DataBase=Data Source=discountdb
-
-    ports:
-      - "6002:8080"
-      - "6062:8081"
-    volumes:
-      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
-      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
-      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
 volumes:
   postgres_catalog:
   postgres_basket:

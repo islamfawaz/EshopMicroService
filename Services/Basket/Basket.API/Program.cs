@@ -1,5 +1,6 @@
 
 using BuildingBlocks.Exceptions.Handler;
+using DicountGrpc;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Caching.Distributed;
@@ -44,6 +45,23 @@ namespace Basket.API
                 option.Configuration=builder.Configuration.GetConnectionString("Redis")!;
             });
 
+            // In your Basket API Program.cs or wherever you configure gRPC client
+            builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(options =>
+            {
+                options.Address = new Uri(builder.Configuration["GrpcSettings:Discount:Url"]!);
+            })
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            {
+                var handler = new HttpClientHandler();
+                if (builder.Environment.IsDevelopment())
+                {
+                    // Skip certificate validation in development
+                    handler.ServerCertificateCustomValidationCallback =
+                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                }
+                return handler;
+            });
+            builder.Services.AddExceptionHandler<CustomExceptionHandler>();
             builder.Services.AddHealthChecks().AddNpgSql(builder.Configuration.GetConnectionString("Database")!)
                 .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
             
