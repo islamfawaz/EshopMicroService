@@ -1,4 +1,4 @@
-﻿using BuildingBlocks.BuildingBlocks;
+using BuildingBlocks.BuildingBlocks;
 using FluentValidation;
 using MediatR;
 using System;

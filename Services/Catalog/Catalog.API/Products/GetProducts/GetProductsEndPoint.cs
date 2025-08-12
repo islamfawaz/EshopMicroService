@@ -1,4 +1,4 @@
-﻿
+
 namespace Catalog.API.Products.GetProducts
 {
     record GetProductRequest(int ? pageNumber = 1, int ? pageSize = 10);

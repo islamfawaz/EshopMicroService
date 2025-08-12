@@ -1,4 +1,4 @@
-﻿using DicountGrpc.Models;
+using DicountGrpc.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace DicountGrpc.Data

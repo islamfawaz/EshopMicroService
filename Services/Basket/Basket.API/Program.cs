@@ -1,10 +1,9 @@
-
 using BuildingBlocks.Exceptions.Handler;
 using DicountGrpc;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.DependencyInjection;
+using BuildingBlocks.Messaging.Mass_Transit;
+using Grpc.Net.Client;
 
 namespace Basket.API
 {
@@ -22,59 +21,73 @@ namespace Basket.API
                 config.RegisterServicesFromAssembly(assembly);
                 config.AddOpenBehavior(typeof(ValidationBehavior<,>));
                 config.AddOpenBehavior(typeof(LoggingBehavior<,>));
-
-
             });
+
             builder.Services.AddMarten(opt =>
             {
                 opt.Connection(builder.Configuration.GetConnectionString("Database")!);
                 opt.Schema.For<ShoppingCart>()
                     .Identity(x => x.UserName);
             }).UseLightweightSessions();
+
             builder.Services.AddScoped<IBasketRepository, BasketRepository>();
             builder.Services.AddExceptionHandler<CustomExceptionHandler>();
-            ///builder.Services.AddScoped<IBasketRepository>(provider =>
-            ///{
-            ///   var basketRepo= provider.GetRequiredService<BasketRepository>();
-            ///     return new CashedBasketRepository(basketRepo, provider.GetRequiredService<IDistributedCache>());
-            ///});
 
             builder.Services.Decorate<IBasketRepository, CashedBasketRepository>();
             builder.Services.AddStackExchangeRedisCache(option =>
             {
-                option.Configuration=builder.Configuration.GetConnectionString("Redis")!;
+                option.Configuration = builder.Configuration.GetConnectionString("Redis")!;
             });
 
-            // In your Basket API Program.cs or wherever you configure gRPC client
+            // Updated gRPC client configuration to match Docker Compose environment variable
             builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(options =>
             {
-                options.Address = new Uri(builder.Configuration["GrpcSettings:Discount:Url"]!);
+                // Use the environment variable name that matches Docker Compose: GrpcSettings__DiscountUrl
+                var grpcUrl = builder.Configuration["GrpcSettings:DiscountUrl"] ??
+                             builder.Configuration["GrpcSettings:Discount:Url"] ??
+                             "https://localhost:7001"; // fallback for local development
+
+                options.Address = new Uri(grpcUrl);
+
+                // Configure channel options for better Docker support
+                if (!grpcUrl.StartsWith("https"))
+                {
+                    options.ChannelOptionsActions.Add(channelOptions =>
+                    {
+                        channelOptions.Credentials = Grpc.Core.ChannelCredentials.Insecure;
+                    });
+                }
             })
             .ConfigurePrimaryHttpMessageHandler(() =>
             {
                 var handler = new HttpClientHandler();
                 if (builder.Environment.IsDevelopment())
                 {
-                    // Skip certificate validation in development
-                    handler.ServerCertificateCustomValidationCallback =
-                        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                    // Accept any certificate in development (important for Docker containers)
+                    handler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) =>
+                    {
+                        return true; // Accept all certificates in development
+                    };
                 }
                 return handler;
             });
-            builder.Services.AddExceptionHandler<CustomExceptionHandler>();
-            builder.Services.AddHealthChecks().AddNpgSql(builder.Configuration.GetConnectionString("Database")!)
-                .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
-            
-            var app = builder.Build();
 
+            builder.Services.AddMessageBroker(builder.Configuration);
+            builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+            builder.Services.AddHealthChecks()
+                .AddNpgSql(builder.Configuration.GetConnectionString("Database")!)
+                .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
+
+            var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             app.MapCarter();
-            app.UseExceptionHandler(options => {});
-            app.UseHealthChecks("/health",new HealthCheckOptions
+            app.UseExceptionHandler(options => { });
+            app.UseHealthChecks("/health", new HealthCheckOptions
             {
-                ResponseWriter=UIResponseWriter.WriteHealthCheckUIResponse
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
             });
+
             app.Run();
         }
     }

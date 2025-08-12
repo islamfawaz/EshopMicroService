@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Catalog.API.Products.UpdateProduct

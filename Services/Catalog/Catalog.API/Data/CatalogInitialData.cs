@@ -1,4 +1,4 @@
-﻿using Marten.Schema;
+using Marten.Schema;
 
 namespace Catalog.API.Data
 {

@@ -1,4 +1,4 @@
-﻿
+
 
 namespace Catalog.API.Products.DeleteProduct
 { 

@@ -1,4 +1,4 @@
-﻿namespace DicountGrpc.Models
+namespace DicountGrpc.Models
 {
     public class Coupon
     {

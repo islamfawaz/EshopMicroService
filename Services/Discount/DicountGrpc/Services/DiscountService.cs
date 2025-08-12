@@ -1,4 +1,4 @@
-﻿using DicountGrpc.Data;
+using DicountGrpc.Data;
 using DicountGrpc.Models;
 using Grpc.Core;
 using Mapster;
@@ -19,7 +19,7 @@ namespace DicountGrpc.Services
 
         public override async Task<CouponModel> CreateDiscount(CreateDiscountRequest request, ServerCallContext context)
         {
-            var coupon = request.Coupon.Adapt<DicountGrpc.Models.Coupon>();
+            Coupon? coupon = request.Coupon.Adapt<DicountGrpc.Models.Coupon>();
             if (coupon is null)
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid Request"));
 

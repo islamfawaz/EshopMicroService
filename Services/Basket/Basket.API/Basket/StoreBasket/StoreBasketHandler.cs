@@ -1,40 +1,39 @@
-﻿
 using DicountGrpc;
 
-namespace Basket.API.Basket.StoreBasket
-{
-    public record StoreBasketCommand(ShoppingCart Cart) : ICommand<StoreBasketResult>;
-    public record StoreBasketResult(string UserName);
+namespace Basket.API.Basket.StoreBasket;
 
-    public class StoreBasketCommandValidator :AbstractValidator<StoreBasketCommand>
+public record StoreBasketCommand(ShoppingCart Cart) : ICommand<StoreBasketResult>;
+public record StoreBasketResult(string UserName);
+
+public class StoreBasketCommandValidator : AbstractValidator<StoreBasketCommand>
+{
+    public StoreBasketCommandValidator()
     {
-        public StoreBasketCommandValidator()
-        {
-            RuleFor(x => x.Cart).NotNull().WithMessage("Cart cannot be null.");
-            RuleFor(x => x.Cart.UserName).NotEmpty().WithMessage("UserName cannot be empty.");
-        }
+        RuleFor(x => x.Cart).NotNull().WithMessage("Cart can not be null");
+        RuleFor(x => x.Cart.UserName).NotEmpty().WithMessage("UserName is required");
+    }
+}
+
+public class StoreBasketCommandHandler
+    (IBasketRepository repository, DiscountProtoService.DiscountProtoServiceClient discountProto)
+    : ICommandHandler<StoreBasketCommand, StoreBasketResult>
+{
+    public async Task<StoreBasketResult> Handle(StoreBasketCommand command, CancellationToken cancellationToken)
+    {
+        await DeductDiscount(command.Cart, cancellationToken);
+
+        await repository.StoreBasketAsync(command.Cart, cancellationToken);
+
+        return new StoreBasketResult(command.Cart.UserName);
     }
 
-    public class StoreBasketCommandHandler(IBasketRepository reop,DiscountProtoService.DiscountProtoServiceClient discountProto) : ICommandHandler<StoreBasketCommand, StoreBasketResult>
+    private async Task DeductDiscount(ShoppingCart cart, CancellationToken cancellationToken)
     {
-        public async Task<StoreBasketResult> Handle(StoreBasketCommand command, CancellationToken cancellationToken)
+        // Communicate with Discount.Grpc and calculate lastest prices of products into sc
+        foreach (var item in cart.Items)
         {
-
-            await DeductDiscounts(command.Cart, cancellationToken);
-
-            await reop.StoreBasketAsync(command.Cart, cancellationToken);   
-
-            return new StoreBasketResult(command.Cart.UserName);
-        }
-
-        private async Task DeductDiscounts(ShoppingCart cart, CancellationToken cancellationToken)
-        {
-            // This method is not used in the current implementation but can be used for future enhancements.
-            foreach (var item in cart.Items)
-            {
-                var coupon=await discountProto.GetDiscountAsync(new GetDiscountRequest { ProductName = item.ProductName });
-                item.Price -= coupon.Amount;
-            }
+            var coupon = await discountProto.GetDiscountAsync(new GetDiscountRequest { ProductName = item.ProductName }, cancellationToken: cancellationToken);
+            item.Price -= coupon.Amount;
         }
     }
 }
