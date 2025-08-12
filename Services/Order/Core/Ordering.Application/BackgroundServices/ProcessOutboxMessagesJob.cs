@@ -5,8 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-// شيلنا الـ using دي لأننا مش هنستخدم الـ Registry
-// using Ordering.Application.Extentions; 
+
 
 namespace Ordering.Application.BackgroundServices
 {
@@ -51,12 +50,9 @@ namespace Ordering.Application.BackgroundServices
 
             _logger.LogInformation("Found {count} messages to process.", messages.Count);
 
-            // تجهيز إعدادات الـ Deserializer عشان تتوافق مع الـ Handler
-            var serializerOptions = new JsonSerializerOptions
+             var serializerOptions = new JsonSerializerOptions
             {
-                // لازم نستخدم نفس الإعدادات اللي استخدمناها في الـ Handler
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                // ودي كأمان إضافي عشان لو حصل أي اختلاف
+                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 PropertyNameCaseInsensitive = true
             };
 
@@ -64,26 +60,21 @@ namespace Ordering.Application.BackgroundServices
             {
                 try
                 {
-                    // ------------------ التغيير الأساسي هنا ------------------
-                    // رجعنا نستخدم Type.GetType() مباشرةً.
-                    // بما إن message.Type يحتوي على AssemblyQualifiedName، فالميثود دي هتشتغل صح.
                     var eventType = Type.GetType(message.Type);
-                    // ---------------------------------------------------------
 
                     if (eventType is null)
                     {
                         _logger.LogError("Could not find type for: {type}. Marking as failed.", message.Type);
-                        message.Error = $"Type '{message.Type}' could not be loaded."; // سجل الخطأ
+                        message.Error = $"Type '{message.Type}' could not be loaded."; 
                         continue;
                     }
 
-                    // بنعمل Deserialization مع استخدام الـ Options اللي جهزناها
                     var integrationEvent = JsonSerializer.Deserialize(message.Content, eventType, serializerOptions);
 
                     if (integrationEvent is null)
                     {
                         _logger.LogError("Failed to deserialize message content for ID: {id}. Marking as failed.", message.Id);
-                        message.Error = "Deserialization resulted in a null object."; // سجل الخطأ
+                        message.Error = "Deserialization resulted in a null object.";
                         continue;
                     }
 
